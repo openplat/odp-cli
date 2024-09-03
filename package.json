@@ -1,0 +1,27 @@
+{
+  "name": "odp-cli",
+  "version": "0.0.1",
+  "description": "Open Development Platform Command Line Client",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "odp-cli": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "npx tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Francisco Ribas (chicoribas)",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.637.0",
+    "@scafflater/scafflater": "^1.0.47",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.2",
+    "typescript": "^5.5.4"
+  }
+}
