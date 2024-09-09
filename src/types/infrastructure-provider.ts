@@ -1,5 +1,5 @@
 
-export type Resource = {
+export type Manifest = {
   apiVersion: string;
   kind: string;
   metadata: {
@@ -11,7 +11,7 @@ export type Resource = {
 
 export type CreateInfrastructureOptions = {
   stackName: string;
-  resources: Resource[];
+  resources: Manifest[];
 }
 
 export type DestroyInfrastructureOptions = {

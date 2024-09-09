@@ -13,6 +13,13 @@ const providers: Record<string, IInfrastructureProvider> = {
   'aws-cloudformation': new AwsCloudFormationProvider(),
   'docker-compose': new DockerComposeProvider()
 }
+// The stack name is the folder name where the command is executed
+const resolveStackName = () => {
+  return process.cwd().split('/').pop();
+}
+const resolveProvider = (provider: string) => {
+  return provider ? providers[provider as string] : providers['aws-cloudformation'];
+}
 
 program
   .version('0.0.1')
@@ -34,16 +41,21 @@ resourceCommand
     // load manifest yaml
     const manifest = parse(fs.readFileSync(options.manifest, 'utf8'));
 
-    const provider: IInfrastructureProvider = options.provider ? providers[options.provider as string] : providers['aws-cloudformation'];
+    const provider: IInfrastructureProvider = resolveProvider(options.provider);
     if (!provider) {
       logger.error('Provider not found');
+      process.exit(1);
+    }
+    const stackName = resolveStackName();
+    if(!stackName) {
+      logger.error('Failed to resolve stack name');
       process.exit(1);
     }
 
     // create the infrastructure
     try {
       await provider.createInfrastructure({
-        stackName: 'odp-cloudformation-stack',
+        stackName,
         resources: [manifest]
       });
     } catch (error) {
@@ -58,12 +70,14 @@ resourceCommand
   .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
 
-    // Define stack parameters
-    const stackName = 'odp-cloudformation-stack';
-
-    const provider: IInfrastructureProvider = options.provider ? providers[options.provider as string] : providers['aws-cloudformation'];
+    const provider: IInfrastructureProvider = resolveProvider(options.provider);
     if (!provider) {
       logger.error('Provider not found');
+      process.exit(1);
+    }
+    const stackName = resolveStackName();
+    if(!stackName) {
+      logger.error('Failed to resolve stack name');
       process.exit(1);
     }
 
@@ -83,12 +97,14 @@ resourceCommand
   .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
 
-    // Define stack parameters
-    const stackName = 'odp-cloudformation-stack';
-
-    const provider: IInfrastructureProvider = options.provider ? providers[options.provider as string] : providers['aws-cloudformation'];
+    const provider: IInfrastructureProvider = resolveProvider(options.provider);
     if (!provider) {
       logger.error('Provider not found');
+      process.exit(1);
+    }
+    const stackName = resolveStackName();
+    if(!stackName) {
+      logger.error('Failed to resolve stack name');
       process.exit(1);
     }
 

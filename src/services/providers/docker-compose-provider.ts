@@ -1,4 +1,4 @@
-import { CreateInfrastructureOptions, DestroyInfrastructureOptions, GetInfrastructureStatusOptions, IInfrastructureProvider, InfrastructureStatus, Resource } from "../../types/infrastructure-provider";
+import { CreateInfrastructureOptions, DestroyInfrastructureOptions, GetInfrastructureStatusOptions, IInfrastructureProvider, InfrastructureStatus, Manifest } from "../../types/infrastructure-provider";
 import { exec } from 'child_process';
 import fs from 'fs';
 import * as os from 'os';
@@ -43,7 +43,7 @@ export class DockerComposeProvider extends IInfrastructureProvider {
     });
   }
 
-  private async renderDockerComposeFile(stackName: string, resources: Resource[]): Promise<string> {
+  private async renderDockerComposeFile(stackName: string, resources: Manifest[]): Promise<string> {
     // create a temp directory
     const dir = fs.mkdtempSync(os.tmpdir() + '/');
 
@@ -54,7 +54,7 @@ export class DockerComposeProvider extends IInfrastructureProvider {
 
     for (const manifest of resources) {
       manifest.spec = manifest.spec ?? {};
-      manifest.spec.stack = manifest.spec.stack ?  
+      manifest.spec.stack = manifest.spec.stack ?
         { ...manifest.spec.stack, name: manifest.spec.stack.name ?? stackName } :
         { name: stackName };
       await scafflater.runPartial('template-docker-compose', manifest.kind, manifest, dir);
@@ -97,13 +97,13 @@ export class DockerComposeProvider extends IInfrastructureProvider {
 
     if (lines.length === 0) {
       return { status: 'stopped' };
-    } 
-    
-    if(lines.every(line => line[5].toUpperCase().endsWith('(RUNNING)'))) {
+    }
+
+    if (lines.every(line => line[5].toUpperCase().endsWith('(RUNNING)') || line[5].toUpperCase().endsWith('(HEALTHY)'))) {
       return { status: 'running' };
-    } else if(lines.every(line => line[5].toUpperCase().endsWith('(PAUSED)') || line[5].toUpperCase().endsWith('(STOPPED)'))) {
+    } else if (lines.every(line => line[5].toUpperCase().endsWith('(PAUSED)') || line[5].toUpperCase().endsWith('(STOPPED)'))) {
       return { status: 'stopped' };
-    } else if(lines.every(line => line[5].toUpperCase().endsWith('(STARTING)'))) {
+    } else if (lines.every(line => line[5].toUpperCase().endsWith('(STARTING)'))) {
       return { status: 'creating' };
     }
 
