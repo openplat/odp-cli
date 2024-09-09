@@ -1,12 +1,20 @@
 {
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
-    "target": "ES2022",
-    "module": "ES2022",
-    "sourceMap": true,
-    "esModuleInterop": true,
-    "moduleResolution": "node"
-  }
+    "target": "ES6",                          // Target JavaScript version
+    "module": "commonjs",                     // Module system
+    "outDir": "./dist",                       // Output directory for compiled files
+    "rootDir": "./src",                       // Root directory of source files
+    "strict": true,                           // Enable all strict type-checking options
+    "esModuleInterop": true,                  // Enable compatibility with CommonJS and ES Modules
+    "forceConsistentCasingInFileNames": true, // Ensure consistent casing in file names
+    "skipLibCheck": true,                     // Skip type checking of declaration files
+    "sourceMap": true                         // Generate source maps for debugging
+  },
+  "include": [
+    "src/**/*"                                // Include all TypeScript files in the src directory
+  ],
+  "exclude": [
+    "node_modules",                           // Exclude node_modules directory
+    "dist"                                    // Exclude dist directory
+  ]
 }

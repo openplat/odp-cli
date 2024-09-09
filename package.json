@@ -2,7 +2,6 @@
   "name": "odp-cli",
   "version": "0.0.1",
   "description": "Open Development Platform Command Line Client",
-  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "odp-cli": "./dist/index.js"
@@ -18,10 +17,13 @@
     "@scafflater/scafflater": "^1.0.47",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "npm": "^10.8.3",
+    "winston": "^3.14.2",
     "yaml": "^2.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.5.2",
+    "@types/npm": "^7.19.3",
     "typescript": "^5.5.4"
   }
 }
