@@ -23,7 +23,7 @@ export type GetInfrastructureStatusOptions = {
 }
 
 export type InfrastructureStatus = {
-  status: "creating" | "running" | "stopped";
+  status: "creating" | "running" | "stopped" | "unknown";
 }
 
 export abstract class IInfrastructureProvider {

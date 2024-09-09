@@ -5,10 +5,13 @@ import fs from 'fs';
 import logger from './logger';
 import { parse } from 'yaml'
 import { AwsCloudFormationProvider } from './services/providers/aws-cloudformation-provider';
+import { DockerComposeProvider } from './services/providers/docker-compose-provider';
+import { IInfrastructureProvider } from './types/infrastructure-provider';
 
 const program = new Command();
-const providers = {
+const providers: Record<string, IInfrastructureProvider> = {
   'aws-cloudformation': new AwsCloudFormationProvider(),
+  'docker-compose': new DockerComposeProvider()
 }
 
 program
@@ -20,6 +23,7 @@ const resourceCommand = program.command('resource');
 resourceCommand
   .command('create')
   .requiredOption('-m, --manifest <manifest>', 'Resource manifest file')
+  .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
     // check if the manifest file exists
     if (!fs.existsSync(options.manifest)) {
@@ -30,7 +34,7 @@ resourceCommand
     // load manifest yaml
     const manifest = parse(fs.readFileSync(options.manifest, 'utf8'));
 
-    const provider = providers['aws-cloudformation'];
+    const provider: IInfrastructureProvider = options.provider ? providers[options.provider as string] : providers['aws-cloudformation'];
     if (!provider) {
       logger.error('Provider not found');
       process.exit(1);
@@ -51,12 +55,13 @@ resourceCommand
 
 resourceCommand
   .command('delete')
+  .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
 
     // Define stack parameters
     const stackName = 'odp-cloudformation-stack';
-    
-    const provider = providers['aws-cloudformation'];
+
+    const provider: IInfrastructureProvider = options.provider ? providers[options.provider as string] : providers['aws-cloudformation'];
     if (!provider) {
       logger.error('Provider not found');
       process.exit(1);
@@ -75,12 +80,13 @@ resourceCommand
 
 resourceCommand
   .command('status')
+  .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
 
     // Define stack parameters
     const stackName = 'odp-cloudformation-stack';
-    
-    const provider = providers['aws-cloudformation'];
+
+    const provider: IInfrastructureProvider = options.provider ? providers[options.provider as string] : providers['aws-cloudformation'];
     if (!provider) {
       logger.error('Provider not found');
       process.exit(1);
