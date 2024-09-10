@@ -6,7 +6,7 @@ import * as os from 'os';
 import logger from "../../logger";
 import path from "path";
 
-export class AwsCloudFormationProvider extends IInfrastructureProvider {
+export class AwsCloudFormationProvider implements IInfrastructureProvider {
   public async getProviderName(): Promise<string> {
     return "aws-cloudformation";
   }

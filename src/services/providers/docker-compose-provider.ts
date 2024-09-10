@@ -5,7 +5,7 @@ import * as os from 'os';
 import path from "path";
 import { Scafflater } from "@scafflater/scafflater";
 
-export class DockerComposeProvider extends IInfrastructureProvider {
+export class DockerComposeProvider implements IInfrastructureProvider {
   public async getProviderName(): Promise<string> {
     return "docker-compose";
   }

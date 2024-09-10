@@ -26,9 +26,9 @@ export type InfrastructureStatus = {
   status: "creating" | "running" | "stopped" | "unknown";
 }
 
-export abstract class IInfrastructureProvider {
-  public abstract getProviderName(): Promise<string>;
-  public abstract createInfrastructure(options: CreateInfrastructureOptions): Promise<void>;
-  public abstract destroyInfrastructure(options: DestroyInfrastructureOptions): Promise<void>;
-  public abstract getInfrastructureStatus(options: GetInfrastructureStatusOptions): Promise<InfrastructureStatus>;
+export interface IInfrastructureProvider {
+  getProviderName(): Promise<string>;
+  createInfrastructure(options: CreateInfrastructureOptions): Promise<void>;
+  destroyInfrastructure(options: DestroyInfrastructureOptions): Promise<void>;
+  getInfrastructureStatus(options: GetInfrastructureStatusOptions): Promise<InfrastructureStatus>;
 }
