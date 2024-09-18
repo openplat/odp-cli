@@ -10,25 +10,59 @@ export type Manifest = {
 }
 
 export type CreateInfrastructureOptions = {
-  stackName: string;
   resources: Manifest[];
-}
-
-export type DestroyInfrastructureOptions = {
-  stackName: string;
-}
-
-export type GetInfrastructureStatusOptions = {
-  stackName: string;
 }
 
 export type InfrastructureStatus = {
   status: "creating" | "running" | "stopped" | "unknown";
 }
 
-export interface IInfrastructureProvider {
-  getProviderName(): Promise<string>;
-  createInfrastructure(options: CreateInfrastructureOptions): Promise<void>;
-  destroyInfrastructure(options: DestroyInfrastructureOptions): Promise<void>;
-  getInfrastructureStatus(options: GetInfrastructureStatusOptions): Promise<InfrastructureStatus>;
+export type GetResourceOutputOptions = {
+
+}
+
+export type ResourceOutput = {
+  key: string;
+  description: string;
+}
+
+export type ResourceOutputValue = ResourceOutput & {
+  value: string;
+}
+
+export type Resource = {
+  kind: string;
+  description: string;
+
+  getOutputs(): Promise<ResourceOutput[]>;
+  getOutputValues(manifest: Manifest): Promise<ResourceOutputValue[]>;
+}
+
+export type InfrastructureProviderOptions = {
+  stackName: string;
+}
+
+export abstract class InfrastructureProvider {
+  options: InfrastructureProviderOptions
+
+  constructor(options: InfrastructureProviderOptions) {
+    this.options = options;
+  };
+
+  abstract getProviderName(): Promise<string>;
+  abstract createInfrastructure(options: CreateInfrastructureOptions): Promise<void>;
+  abstract destroyInfrastructure(): Promise<void>;
+  abstract getInfrastructureStatus(): Promise<InfrastructureStatus>;
+  abstract listAvailableResources(): Promise<Resource[]>;
+  abstract getStackOutput(): Promise<Record<string, string>>;
+
+  public async getResourceOutputs(manifest: Manifest): Promise<ResourceOutputValue[]> {
+    const resource = (await this.listAvailableResources()).find(r => r.kind === manifest.kind);
+    if (!resource) {
+      throw new Error(`Resource ${manifest.kind} not found`);
+    }
+
+    return resource
+      .getOutputValues(manifest);
+  }
 }

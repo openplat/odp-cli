@@ -1,13 +1,44 @@
-import { CreateInfrastructureOptions, DestroyInfrastructureOptions, GetInfrastructureStatusOptions, IInfrastructureProvider, InfrastructureStatus, Manifest } from "../../types/infrastructure-provider";
+import { CreateInfrastructureOptions, InfrastructureProvider, InfrastructureProviderOptions, InfrastructureStatus, Manifest, Resource } from "../../../types/infrastructure-provider";
 import { exec } from 'child_process';
 import fs from 'fs';
-import * as os from 'os';
 import path from "path";
-import { Scafflater } from "@scafflater/scafflater";
+import { Scafflater, TemplateInitialized } from "@scafflater/scafflater";
+import { PostgresResource } from "./resources/postgres";
 
-export class DockerComposeProvider implements IInfrastructureProvider {
+export class DockerComposeProvider extends InfrastructureProvider {
+  private availableResources: Resource[] = [];
+  
+  constructor(options: InfrastructureProviderOptions) {
+    super(options);
+    this.availableResources.push(new PostgresResource(this));
+  }
+
   public async getProviderName(): Promise<string> {
     return "docker-compose";
+  }
+
+  public async listAvailableResources(): Promise<Resource[]> {
+    return Promise.resolve(this.availableResources);
+  }
+
+  public async getStackOutput(): Promise<Record<string, string>> {
+    const dockerComposeFile = path.join(this.getOplatPath(), 'docker-compose.yaml');
+    if (!fs.existsSync('.oplat')) {
+      throw new Error('Docker Compose infrastructure not found. Run `oplat resource create -p docker-compose -m <manifest>` to create the infrastructure.');
+    }
+
+    return Promise.resolve({ dockerComposeFile: fs.readFileSync(dockerComposeFile, 'utf8') });
+
+  }
+
+  private getOplatPath(): string {
+    // create a temp directory
+    const oplatPath = path.resolve(`./.oplat`);
+    if(!fs.existsSync(oplatPath)) {
+      fs.mkdirSync(oplatPath);
+    }
+
+    return oplatPath;
   }
 
   private async isDockerComposeInstalled(): Promise<boolean> {
@@ -45,22 +76,30 @@ export class DockerComposeProvider implements IInfrastructureProvider {
 
   private async renderDockerComposeFile(stackName: string, resources: Manifest[]): Promise<string> {
     // create a temp directory
-    const dir = fs.mkdtempSync(os.tmpdir() + '/');
+    const oplatPath = this.getOplatPath();
 
     // Create the infrastructure using AWS CloudFormation
     // scaffold the resource
     const scafflater = new Scafflater({ source: 'githubClient', cacheStorage: 'tempDir' });
-    await scafflater.init("https://github.com/openplat/template-docker-compose", {}, undefined, dir);
+    try {
+        await scafflater.init("https://github.com/openplat/template-docker-compose", {}, undefined, oplatPath);
+    } catch (error) {
+      if(error instanceof TemplateInitialized){
+        console.log('Template already initialized');
+      }else{
+        throw error;
+      }
+    }
 
     for (const manifest of resources) {
       manifest.spec = manifest.spec ?? {};
       manifest.spec.stack = manifest.spec.stack ?
         { ...manifest.spec.stack, name: manifest.spec.stack.name ?? stackName } :
         { name: stackName };
-      await scafflater.runPartial('template-docker-compose', manifest.kind, manifest, dir);
+      await scafflater.runPartial('template-docker-compose', manifest.kind, manifest, oplatPath);
     }
 
-    return path.join(dir, `docker-compose.yaml`);
+    return path.join(oplatPath, `docker-compose.yaml`);
   }
 
   public async createInfrastructure(options: CreateInfrastructureOptions): Promise<void> {
@@ -68,28 +107,28 @@ export class DockerComposeProvider implements IInfrastructureProvider {
       throw new Error('Docker Compose is not installed.');
     }
 
-    const filePath = await this.renderDockerComposeFile(options.stackName, options.resources);
+    const filePath = await this.renderDockerComposeFile(this.options.stackName, options.resources);
 
     // Create the infrastructure using docker-compose
     await this.executeDockerComposeCommand('up', '-f', filePath);
 
   }
 
-  public async destroyInfrastructure(options: DestroyInfrastructureOptions): Promise<void> {
+  public async destroyInfrastructure(): Promise<void> {
     if (!(await this.isDockerComposeInstalled())) {
       throw new Error('Docker Compose is not installed.');
     }
 
     // Create the infrastructure using docker-compose
-    await this.executeDockerComposeCommand('down', '-p', options.stackName);
+    await this.executeDockerComposeCommand('down', '-p', this.options.stackName);
   }
 
-  public async getInfrastructureStatus(options: GetInfrastructureStatusOptions): Promise<InfrastructureStatus> {
+  public async getInfrastructureStatus(): Promise<InfrastructureStatus> {
     if (!(await this.isDockerComposeInstalled())) {
       throw new Error('Docker Compose is not installed.');
     }
 
-    const { stdout, stderr } = await this.executeDockerComposeCommand('ps', '-p', options.stackName);
+    const { stdout, stderr } = await this.executeDockerComposeCommand('ps', '-p', this.options.stackName);
 
     // Parse the output to determine the status of each service
     const lines = stdout.split('\n').filter(line => line.trim() !== '').slice(1).map(line => line.split(/\s{2,}/));

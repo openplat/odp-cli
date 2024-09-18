@@ -4,22 +4,24 @@ import { Command } from 'commander';
 import fs from 'fs';
 import logger from './logger';
 import { parse } from 'yaml'
-import { AwsCloudFormationProvider } from './services/providers/aws-cloudformation-provider';
-import { DockerComposeProvider } from './services/providers/docker-compose-provider';
-import { IInfrastructureProvider } from './types/infrastructure-provider';
+import { AwsCloudFormationProvider } from './services/providers/aws-cloudformation-provider/index';
+import { DockerComposeProvider } from './services/providers/docker-compose-provider/index';
+import { InfrastructureProvider } from './types/infrastructure-provider';
+import * as changeCase from "change-case";
 
-const program = new Command();
-const providers: Record<string, IInfrastructureProvider> = {
-  'aws-cloudformation': new AwsCloudFormationProvider(),
-  'docker-compose': new DockerComposeProvider()
-}
 // The stack name is the folder name where the command is executed
-const resolveStackName = () => {
-  return process.cwd().split('/').pop();
-}
+const stackName = process.cwd().split('/').pop() as string;
+
 const resolveProvider = (provider: string) => {
   return provider ? providers[provider as string] : providers['aws-cloudformation'];
 }
+
+const program = new Command();
+const providers: Record<string, InfrastructureProvider> = {
+  'aws-cloudformation': new AwsCloudFormationProvider({ stackName, region: 'us-east-1' }),
+  'docker-compose': new DockerComposeProvider({ stackName })
+}
+
 
 program
   .version('0.0.1')
@@ -41,13 +43,12 @@ resourceCommand
     // load manifest yaml
     const manifest = parse(fs.readFileSync(options.manifest, 'utf8'));
 
-    const provider: IInfrastructureProvider = resolveProvider(options.provider);
+    const provider: InfrastructureProvider = resolveProvider(options.provider);
     if (!provider) {
       logger.error('Provider not found');
       process.exit(1);
     }
-    const stackName = resolveStackName();
-    if(!stackName) {
+    if (!stackName) {
       logger.error('Failed to resolve stack name');
       process.exit(1);
     }
@@ -55,7 +56,6 @@ resourceCommand
     // create the infrastructure
     try {
       await provider.createInfrastructure({
-        stackName,
         resources: [manifest]
       });
     } catch (error) {
@@ -70,22 +70,19 @@ resourceCommand
   .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
 
-    const provider: IInfrastructureProvider = resolveProvider(options.provider);
+    const provider: InfrastructureProvider = resolveProvider(options.provider);
     if (!provider) {
       logger.error('Provider not found');
       process.exit(1);
     }
-    const stackName = resolveStackName();
-    if(!stackName) {
+    if (!stackName) {
       logger.error('Failed to resolve stack name');
       process.exit(1);
     }
 
     // delete the infrastructure
     try {
-      await provider.destroyInfrastructure({
-        stackName
-      });
+      await provider.destroyInfrastructure();
     } catch (error) {
       logger.error(`Failed to delete resource: ${(error as Error).message}`);
       process.exit(1);
@@ -97,27 +94,60 @@ resourceCommand
   .option('-p, --provider <provider>', 'Infrastructure provider')
   .action(async (options) => {
 
-    const provider: IInfrastructureProvider = resolveProvider(options.provider);
+    const provider: InfrastructureProvider = resolveProvider(options.provider);
     if (!provider) {
       logger.error('Provider not found');
       process.exit(1);
     }
-    const stackName = resolveStackName();
-    if(!stackName) {
+    if (!stackName) {
       logger.error('Failed to resolve stack name');
       process.exit(1);
     }
 
     // get the infrastructure status
     try {
-      const status = await provider.getInfrastructureStatus({
-        stackName
-      });
+      const status = await provider.getInfrastructureStatus();
       logger.info(`Resource status: ${status.status}`);
     } catch (error) {
       logger.error(`Failed to get resource status: ${(error as Error).message}`);
       process.exit(1);
     }
   });
+
+program
+  .command('export-env')
+  .option('-p, --provider <provider>', 'Infrastructure provider')
+  .requiredOption('-m, --manifest <manifest>', 'Resource manifest file')
+  .action(async (options) => {
+    const provider: InfrastructureProvider = resolveProvider(options.provider);
+    if (!provider) {
+      logger.error('Provider not found');
+      process.exit(1);
+    }
+    if (!stackName) {
+      logger.error('Failed to resolve stack name');
+      process.exit(1);
+    }
+
+    // load manifest yaml
+    const manifest = parse(fs.readFileSync(options.manifest, 'utf8'));
+    // configure the infrastructure
+    try {
+      provider.getResourceOutputs(manifest).then((outputs) => {
+        let envFileContent = '';
+        for (const output of outputs) {
+          const envName = changeCase.constantCase(`${manifest.metadata.name}_${output.key}`);
+          envFileContent += `${envName}=${output.value}\n`;
+          console.log(`${envName}=${output.value}`);
+        }
+        fs.writeFileSync('.env', envFileContent);
+      });
+
+    } catch (error) {
+      logger.error(`Failed to configure resource: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
 
 program.parse(process.argv);
